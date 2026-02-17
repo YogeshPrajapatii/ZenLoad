@@ -79,7 +79,6 @@ fun HomeScreen(
             CenterAlignedTopAppBar(
                 title = { Text("ZenLoad", fontWeight = FontWeight.Bold) },
                 actions = {
-                    // Navigate to Downloads screen
                     IconButton(onClick = { navController.navigate(Downloads) }) {
                         Icon(Icons.Default.List, contentDescription = "Active Downloads")
                     }
@@ -127,8 +126,11 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // 🔥 FIXED BUTTON: Removed 'InitializingEngine' reference 🔥
             Button(
-                onClick = { if (urlText.isNotBlank()) viewModel.fetchVideoDetails(urlText) },
+                onClick = {
+                    if (urlText.isNotBlank()) viewModel.fetchVideoDetails(urlText)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -153,7 +155,8 @@ fun HomeScreen(
                 Text(
                     text = (uiState as DownloadUiState.Error).message,
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
@@ -171,7 +174,6 @@ fun HomeScreen(
                 onFormatSelected = { selectedFormat ->
                     viewModel.startDownload(urlText, selectedFormat.formatId, successState.title)
                     viewModel.resetState()
-                    // Auto-navigate to Downloads screen after starting download
                     navController.navigate(Downloads)
                 }
             )
