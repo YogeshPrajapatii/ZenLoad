@@ -1,16 +1,13 @@
 package com.example.zenload.data.downloader
 
 import android.content.Context
-import android.util.Log
 import androidx.work.*
-import com.example.zenload.ZenLoadApp
 import com.example.zenload.domain.model.MediaFormat
 import com.example.zenload.domain.model.VideoDetails
 import com.example.zenload.domain.repository.DownloaderRepository
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
@@ -19,11 +16,11 @@ class DownloaderRepositoryImpl(private val context: Context) : DownloaderReposit
     override suspend fun fetchVideoDetails(url: String): Result<VideoDetails> {
         return withContext(Dispatchers.IO) {
             try {
-                // Safety: Wait a bit if engine update is still in progress
-                var retryCount = 0
-                while (!ZenLoadApp.isEngineUpdated && retryCount < 5) {
-                    delay(1000)
-                    retryCount++
+                // Force Init Check right before fetch
+                try {
+                    YoutubeDL.getInstance().init(context.applicationContext)
+                } catch (e: Exception) {
+                    // Already initialized, continue
                 }
 
                 val request = YoutubeDLRequest(url)
@@ -40,22 +37,17 @@ class DownloaderRepositoryImpl(private val context: Context) : DownloaderReposit
                     val size = calculateSize(format.fileSize, format.tbr?.toDouble() ?: 0.0, duration)
                     val sizeLabel = if (size > 0) formatBytes(size) else "Unknown"
 
-                    // Audio Logic: kbps categorization
                     if (format.vcodec == "none" && format.acodec != "none") {
                         val label = when {
                             (format.abr?.toInt() ?: 0) <= 70 -> "64kbps"
                             (format.abr?.toInt() ?: 0) <= 140 -> "128kbps"
                             else -> "256kbps"
                         }
-                        // Priority to M4A for mobile compatibility
                         if (!audioMap.containsKey(label) || format.ext == "m4a") {
                             audioMap[label] = MediaFormat(format.formatId!!, label, format.ext!!, sizeLabel, true)
                         }
-                    }
-                    // Video Logic: Standard heights only
-                    else if (format.vcodec != "none" && format.height in standardHeights) {
+                    } else if (format.vcodec != "none" && format.height in standardHeights) {
                         val label = "${format.height}p"
-                        // Priority to MP4 for video standard
                         if (!videoMap.containsKey(label) || format.ext == "mp4") {
                             videoMap[label] = MediaFormat(format.formatId!!, label, format.ext!!, sizeLabel, format.acodec != "none")
                         }
@@ -69,7 +61,6 @@ class DownloaderRepositoryImpl(private val context: Context) : DownloaderReposit
                     formats = videoMap.values.toList() + audioMap.values.toList()
                 ))
             } catch (e: Exception) {
-                Log.e("ZenLoad_Repo", "Fetch Error: ${e.message}")
                 Result.failure(e)
             }
         }
@@ -77,18 +68,8 @@ class DownloaderRepositoryImpl(private val context: Context) : DownloaderReposit
 
     override fun startDownload(url: String, formatId: String, title: String): String {
         val downloadId = abs(url.hashCode()).toString()
-        val data = Data.Builder()
-            .putString("URL", url)
-            .putString("FORMAT_ID", formatId)
-            .putString("TITLE", title)
-            .build()
-
-        val work = OneTimeWorkRequestBuilder<VideoDownloadWorker>()
-            .setInputData(data)
-            .addTag("all_downloads")
-            .addTag(downloadId)
-            .build()
-
+        val data = Data.Builder().putString("URL", url).putString("FORMAT_ID", formatId).putString("TITLE", title).build()
+        val work = OneTimeWorkRequestBuilder<VideoDownloadWorker>().setInputData(data).addTag("all_downloads").addTag(downloadId).build()
         WorkManager.getInstance(context).enqueueUniqueWork(downloadId, ExistingWorkPolicy.REPLACE, work)
         return downloadId
     }
