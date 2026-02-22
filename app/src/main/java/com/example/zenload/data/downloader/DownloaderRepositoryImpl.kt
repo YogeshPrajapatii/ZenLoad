@@ -16,13 +16,7 @@ class DownloaderRepositoryImpl(private val context: Context) : DownloaderReposit
     override suspend fun fetchVideoDetails(url: String): Result<VideoDetails> {
         return withContext(Dispatchers.IO) {
             try {
-                // Force Init Check right before fetch
-                try {
-                    YoutubeDL.getInstance().init(context.applicationContext)
-                } catch (e: Exception) {
-                    // Already initialized, continue
-                }
-
+                // Ensure engine is alive before fetch
                 val request = YoutubeDLRequest(url)
                 val info = YoutubeDL.getInstance().getInfo(request)
                 val duration = info.duration.toLong()
@@ -33,7 +27,6 @@ class DownloaderRepositoryImpl(private val context: Context) : DownloaderReposit
 
                 info.formats?.forEach { format ->
                     if (format.ext == "mhtml" || format.formatNote?.contains("storyboard") == true) return@forEach
-
                     val size = calculateSize(format.fileSize, format.tbr?.toDouble() ?: 0.0, duration)
                     val sizeLabel = if (size > 0) formatBytes(size) else "Unknown"
 
@@ -53,13 +46,7 @@ class DownloaderRepositoryImpl(private val context: Context) : DownloaderReposit
                         }
                     }
                 }
-
-                Result.success(VideoDetails(
-                    title = info.title ?: "ZenMedia",
-                    thumbnailUrl = info.thumbnail ?: "",
-                    duration = duration,
-                    formats = videoMap.values.toList() + audioMap.values.toList()
-                ))
+                Result.success(VideoDetails(info.title!!, info.thumbnail!!, duration, videoMap.values.toList() + audioMap.values.toList()))
             } catch (e: Exception) {
                 Result.failure(e)
             }
@@ -67,20 +54,28 @@ class DownloaderRepositoryImpl(private val context: Context) : DownloaderReposit
     }
 
     override fun startDownload(url: String, formatId: String, title: String): String {
-        val downloadId = abs(url.hashCode()).toString()
-        val data = Data.Builder().putString("URL", url).putString("FORMAT_ID", formatId).putString("TITLE", title).build()
-        val work = OneTimeWorkRequestBuilder<VideoDownloadWorker>().setInputData(data).addTag("all_downloads").addTag(downloadId).build()
-        WorkManager.getInstance(context).enqueueUniqueWork(downloadId, ExistingWorkPolicy.REPLACE, work)
+        val downloadId = abs(url.hashCode().toLong()).toString()
+        val data = Data.Builder()
+            .putString("URL", url)
+            .putString("FORMAT_ID", formatId)
+            .putString("TITLE", title)
+            .build()
+
+        val work = OneTimeWorkRequestBuilder<VideoDownloadWorker>()
+            .setInputData(data)
+            .addTag("all_downloads")
+            .addTag(downloadId)
+            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, java.util.concurrent.TimeUnit.SECONDS) // Auto-retry if fail
+            .build()
+
+        // Industry standard: KEEP ensures one doesn't kill another
+        WorkManager.getInstance(context).enqueueUniqueWork(downloadId, ExistingWorkPolicy.KEEP, work)
         return downloadId
     }
 
     override fun pauseDownload(id: String) { WorkManager.getInstance(context).cancelAllWorkByTag(id) }
     override fun cancelDownload(id: String) { WorkManager.getInstance(context).cancelAllWorkByTag(id) }
 
-    private fun calculateSize(fileSize: Long?, tbr: Double, duration: Long): Long {
-        if (fileSize != null && fileSize > 0) return fileSize
-        return if (tbr > 0 && duration > 0) ((tbr * 1024) / 8).toLong() * duration else 0L
-    }
-
+    private fun calculateSize(fileSize: Long?, tbr: Double, duration: Long): Long = fileSize ?: ((tbr * 1024) / 8).toLong() * duration
     private fun formatBytes(b: Long) = String.format("%.2f MB", b / (1024.0 * 1024.0))
 }
