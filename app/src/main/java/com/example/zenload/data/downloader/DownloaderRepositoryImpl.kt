@@ -16,7 +16,6 @@ class DownloaderRepositoryImpl(private val context: Context) : DownloaderReposit
     override suspend fun fetchVideoDetails(url: String): Result<VideoDetails> {
         return withContext(Dispatchers.IO) {
             try {
-                // Ensure engine is alive before fetch
                 val request = YoutubeDLRequest(url)
                 val info = YoutubeDL.getInstance().getInfo(request)
                 val duration = info.duration.toLong()
@@ -65,10 +64,10 @@ class DownloaderRepositoryImpl(private val context: Context) : DownloaderReposit
             .setInputData(data)
             .addTag("all_downloads")
             .addTag(downloadId)
-            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, java.util.concurrent.TimeUnit.SECONDS) // Auto-retry if fail
+            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, java.util.concurrent.TimeUnit.SECONDS)
             .build()
 
-        // Industry standard: KEEP ensures one doesn't kill another
+        // Industry Standard: KEEP allows multiple simultaneous downloads
         WorkManager.getInstance(context).enqueueUniqueWork(downloadId, ExistingWorkPolicy.KEEP, work)
         return downloadId
     }

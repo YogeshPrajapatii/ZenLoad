@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 class ZenLoadApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Run on IO scope to ensure readiness before any activity starts
+        // Initialize engine once globally on startup to prevent multi-threading locks
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 YoutubeDL.getInstance().init(this@ZenLoadApp)

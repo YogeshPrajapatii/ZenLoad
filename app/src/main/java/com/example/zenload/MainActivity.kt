@@ -12,30 +12,34 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.navigation.compose.rememberNavController
-import com.example.zenload.presentation.navigation.AppNavigation
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.example.zenload.presentation.MainScreenContainer
 import com.example.zenload.ui.theme.ZenLoadTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    // Launcher to handle multiple permissions professionally
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.entries.all { it.value }
         if (!allGranted) {
-            Toast.makeText(this, "Permissions required to download media", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Permissions required for background downloads", Toast.LENGTH_LONG).show()
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
 
-        // Requesting permissions right at the start
+        installSplashScreen()
+
+        enableEdgeToEdge()
         requestZenPermissions()
 
         var sharedUrl = ""
@@ -44,32 +48,33 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            ZenLoadTheme {
+            var isDarkMode by remember { mutableStateOf(false) }
+
+            ZenLoadTheme(darkTheme = isDarkMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val navController = rememberNavController()
-                    AppNavigation(navController = navController, sharedLink = sharedUrl)
+                    MainScreenContainer(
+                        sharedLink = sharedUrl,
+                        isDarkMode = isDarkMode,
+                        onDarkModeChanged = { isDarkMode = it }
+                    )
                 }
             }
         }
     }
 
     private fun requestZenPermissions() {
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Permissions for Android 13 to 16
-            arrayOf(
-                Manifest.permission.READ_MEDIA_VIDEO,
-                Manifest.permission.READ_MEDIA_AUDIO
-            )
+        val permissions = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.READ_MEDIA_VIDEO)
+            permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
         } else {
-            // Permissions for Android 12 and below
-            arrayOf(
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            )
+            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
-        permissionLauncher.launch(permissions)
+        permissionLauncher.launch(permissions.toTypedArray())
     }
 }
