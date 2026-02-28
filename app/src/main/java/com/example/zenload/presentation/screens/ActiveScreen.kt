@@ -1,9 +1,10 @@
 package com.example.zenload.presentation.screens
 
+import android.annotation.SuppressLint
 import android.content.res.Configuration
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,11 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,21 +31,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.NativePaint
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.zenload.presentation.components.DownloadControlButton
 import com.example.zenload.presentation.components.GlassCard
 import com.example.zenload.ui.theme.ZenLoadTheme
 
@@ -66,8 +58,14 @@ data class DownloadTask(
 
 @Composable
 fun PixelPerfectProgressBar(
-    progress: Float, color: Color = Color(0xFF8A2BE2), modifier: Modifier = Modifier
+    progress: Float,
+    color: Color = MaterialTheme.colorScheme.primary,
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val shadowRadius = if (isDarkTheme) 30f else 10f
+    val shadowColor = if (isDarkTheme) color.copy(alpha = 0.8f) else color.copy(alpha = 0.3f)
+
     Canvas(
         modifier = modifier
             .fillMaxWidth()
@@ -84,7 +82,7 @@ fun PixelPerfectProgressBar(
         drawIntoCanvas { canvas ->
             val paint = Paint().asFrameworkPaint().apply {
                 this.color = color.toArgb()
-                setShadowLayer(30f, 0f, 0f, color.toArgb())
+                setShadowLayer(shadowRadius, 0f, 0f, shadowColor.toArgb())
             }
             canvas.nativeCanvas.drawRoundRect(
                 0f, 0f, activeWidth, size.height, cornerRadius.x, cornerRadius.y, paint

@@ -49,7 +49,7 @@ fun ZenSplashScreen(
         contentAlignment = Alignment.Center
     ) {
         Image(
-            painter = painterResource(id = R.drawable.zenload_app_logo), // Place cleaned logo asset here
+            painter = painterResource(id = R.drawable.zenload_app_logo),
             contentDescription = null,
             modifier = Modifier
                 .size(width = 160.dp, height = 160.dp) // Maintain aspect ratio
