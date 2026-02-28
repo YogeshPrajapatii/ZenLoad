@@ -16,7 +16,6 @@ class ActiveViewModel @Inject constructor(
 
     private val workManager = WorkManager.getInstance(context)
 
-    // Observes all active downloads from WorkManager
     val activeDownloads = workManager.getWorkInfosByTagFlow("all_downloads").map { infos ->
         infos.filter { !it.state.isFinished }.map { info ->
             val progress = info.progress.getInt("PROGRESS", 0)
