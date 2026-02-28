@@ -4,17 +4,27 @@ import android.content.Context
 import android.media.MediaScannerConnection
 import android.os.Environment
 import android.util.Log
+import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.example.zenload.data.local.DownloadDao
+import com.example.zenload.data.local.DownloadEntity
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.max
 
-class VideoDownloadWorker(private val context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+@HiltWorker
+class VideoDownloadWorker @AssistedInject constructor(
+    @Assisted private val context: Context,
+    @Assisted params: WorkerParameters,
+    private val downloadDao: DownloadDao
+) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val url = inputData.getString("URL") ?: return@withContext Result.failure()
@@ -43,40 +53,42 @@ class VideoDownloadWorker(private val context: Context, params: WorkerParameters
             }
 
             var isSecondStream = false
-            YoutubeDL.getInstance().execute(request, id.toString()) { progress, _, line ->
-                val currentProgress = max(0, progress.toInt()) // Fix: No more -1%
-
+            YoutubeDL.getInstance().execute(request, id.toString()) { progress, _, _ ->
+                val currentProgress = max(0, progress.toInt())
                 val displayProgress = if (isAudioOnly) {
-                    currentProgress // Audio only is straight 0-100
+                    currentProgress
                 } else {
-                    // Logic for Video + Audio (50-50 split)
                     if (currentProgress == 100 && !isSecondStream) {
                         isSecondStream = true
                         50
                     } else if (!isSecondStream) {
-                        currentProgress / 2 // First half: 0 to 50
+                        currentProgress / 2
                     } else {
-                        50 + (currentProgress / 2) // Second half: 51 to 100
+                        50 + (currentProgress / 2)
                     }
                 }
-
-                setProgressAsync(workDataOf(
-                    "PROGRESS" to displayProgress,
-                    "TITLE" to title
-                ))
+                setProgressAsync(workDataOf("PROGRESS" to displayProgress, "TITLE" to title))
             }
 
-            // Snaptube Level: Scan file asynchronously without blocking other downloads
             val finalExt = if (isAudioOnly) "mp3" else "mp4"
             val finalFile = File(zenLoadDir, "$cleanTitle.$finalExt")
 
-            MediaScannerConnection.scanFile(context, arrayOf(finalFile.absolutePath), null) { path, _ ->
-                Log.d("ZenLoad_System", "Download Complete & Scanned: $path")
+            if (finalFile.exists()) {
+                MediaScannerConnection.scanFile(context, arrayOf(finalFile.absolutePath), null, null)
+
+                downloadDao.insertDownload(
+                    DownloadEntity(
+                        id = id.toString(),
+                        title = title,
+                        filePath = finalFile.absolutePath,
+                        resolution = if (isAudioOnly) "Audio" else formatId,
+                        sizeText = String.format("%.2f MB", finalFile.length() / (1024.0 * 1024.0))
+                    )
+                )
             }
 
             Result.success()
         } catch (e: Exception) {
-            Log.e("ZenLoad_System", "Error: ${e.message}")
             Result.retry()
         }
     }

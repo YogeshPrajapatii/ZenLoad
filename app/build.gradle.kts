@@ -61,6 +61,12 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation("androidx.core:core-splashscreen:1.0.1")
 
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation(libs.androidx.hilt.common)
+    implementation(libs.androidx.hilt.work)
+    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+
     implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("com.google.dagger:hilt-android:2.51.1")

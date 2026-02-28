@@ -1,13 +1,12 @@
 package com.example.zenload.di
 
 import android.content.Context
+import androidx.room.Room
 import com.example.zenload.data.downloader.DownloaderRepositoryImpl
+import com.example.zenload.data.local.DownloadDao
+import com.example.zenload.data.local.ZenLoadDatabase
 import com.example.zenload.domain.repository.DownloaderRepository
-import com.example.zenload.domain.usecase.CancelDownloadUseCase
-import com.example.zenload.domain.usecase.GetVideoDetailsUseCase
-import com.example.zenload.domain.usecase.PauseDownloadUseCase
-import com.example.zenload.domain.usecase.ResumeDownloadUseCase
-import com.example.zenload.domain.usecase.StartDownloadUseCase
+import com.example.zenload.domain.usecase.*
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,49 +14,40 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-// Tells Hilt how to create and provide instances of our classes
 @Module
-@InstallIn(SingletonComponent::class) // These instances will live as long as the app is alive
+@InstallIn(SingletonComponent::class)
 object AppModule {
 
-    // 1. Provide the Repository implementation
+    @Provides
+    @Singleton
+    fun provideDatabase(@ApplicationContext context: Context): ZenLoadDatabase {
+        return Room.databaseBuilder(context, ZenLoadDatabase::class.java, "zenload_db").build()
+    }
+
+    @Provides
+    fun provideDownloadDao(db: ZenLoadDatabase): DownloadDao = db.downloadDao()
+
     @Provides
     @Singleton
     fun provideDownloaderRepository(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
+        dao: DownloadDao
     ): DownloaderRepository {
-        return DownloaderRepositoryImpl(context)
-    }
-
-    // 2. Provide the UseCases so ViewModel can use them easily
-
-    @Provides
-    @Singleton
-    fun provideGetVideoDetailsUseCase(repository: DownloaderRepository): GetVideoDetailsUseCase {
-        return GetVideoDetailsUseCase(repository)
+        return DownloaderRepositoryImpl(context, dao)
     }
 
     @Provides
-    @Singleton
-    fun provideStartDownloadUseCase(repository: DownloaderRepository): StartDownloadUseCase {
-        return StartDownloadUseCase(repository)
-    }
+    fun provideGetVideoDetailsUseCase(repo: DownloaderRepository) = GetVideoDetailsUseCase(repo)
 
     @Provides
-    @Singleton
-    fun providePauseDownloadUseCase(repository: DownloaderRepository): PauseDownloadUseCase {
-        return PauseDownloadUseCase(repository)
-    }
+    fun provideStartDownloadUseCase(repo: DownloaderRepository) = StartDownloadUseCase(repo)
 
     @Provides
-    @Singleton
-    fun provideResumeDownloadUseCase(repository: DownloaderRepository): ResumeDownloadUseCase {
-        return ResumeDownloadUseCase(repository)
-    }
+    fun provideCancelDownloadUseCase(repo: DownloaderRepository) = CancelDownloadUseCase(repo)
 
     @Provides
-    @Singleton
-    fun provideCancelDownloadUseCase(repository: DownloaderRepository): CancelDownloadUseCase {
-        return CancelDownloadUseCase(repository)
-    }
+    fun providePauseDownloadUseCase(repo: DownloaderRepository) = PauseDownloadUseCase(repo)
+
+    @Provides
+    fun provideResumeDownloadUseCase(repo: DownloaderRepository) = ResumeDownloadUseCase(repo)
 }

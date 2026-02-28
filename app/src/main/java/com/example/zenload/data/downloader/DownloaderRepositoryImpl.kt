@@ -2,6 +2,7 @@ package com.example.zenload.data.downloader
 
 import android.content.Context
 import androidx.work.*
+import com.example.zenload.data.local.DownloadDao
 import com.example.zenload.domain.model.MediaFormat
 import com.example.zenload.domain.model.VideoDetails
 import com.example.zenload.domain.repository.DownloaderRepository
@@ -11,12 +12,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
-class DownloaderRepositoryImpl(private val context: Context) : DownloaderRepository {
+class DownloaderRepositoryImpl(
+    private val context: Context,
+    private val downloadDao: DownloadDao
+) : DownloaderRepository {
 
     override suspend fun fetchVideoDetails(url: String): Result<VideoDetails> {
         return withContext(Dispatchers.IO) {
             try {
-                val request = YoutubeDLRequest(url)
+                val request = YoutubeDLRequest(url).apply {
+                    addOption("--no-playlist")
+                    addOption("--get-title")
+                }
                 val info = YoutubeDL.getInstance().getInfo(request)
                 val duration = info.duration.toLong()
 
@@ -67,7 +74,6 @@ class DownloaderRepositoryImpl(private val context: Context) : DownloaderReposit
             .setBackoffCriteria(BackoffPolicy.LINEAR, 10, java.util.concurrent.TimeUnit.SECONDS)
             .build()
 
-        // Industry Standard: KEEP allows multiple simultaneous downloads
         WorkManager.getInstance(context).enqueueUniqueWork(downloadId, ExistingWorkPolicy.KEEP, work)
         return downloadId
     }
