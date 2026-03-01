@@ -72,14 +72,20 @@ class VideoDownloadWorker @AssistedInject constructor(
         val url = inputData.getString("URL") ?: return@withContext Result.failure()
         val formatId = inputData.getString("FORMAT_ID") ?: return@withContext Result.failure()
         val title = inputData.getString("TITLE") ?: "ZenLoad_Media"
+        val thumb = inputData.getString("THUMB") ?: "" // Add thumb if you pass it from home
 
         try {
             setForeground(getForegroundInfo())
 
+            val isAudioOnly = formatId.contains("kbps") || formatId.startsWith("audio")
+            val displayFormat = if (isAudioOnly) "MP3" else "MP4"
+
+            // Ensure initial zero state is passed completely
+            setProgressAsync(workDataOf("PROGRESS" to 0, "TITLE" to title, "FORMAT" to displayFormat, "THUMB" to thumb))
+
             val downloadFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             val zenLoadDir = File(downloadFolder, "ZenLoad").apply { if (!exists()) mkdirs() }
             val cleanTitle = title.replace(Regex("[^a-zA-Z0-9]"), "_")
-            val isAudioOnly = formatId.contains("kbps") || formatId.startsWith("audio")
 
             val request = YoutubeDLRequest(url).apply {
                 if (isAudioOnly) {
@@ -112,7 +118,7 @@ class VideoDownloadWorker @AssistedInject constructor(
                     }
                 }
 
-                setProgressAsync(workDataOf("PROGRESS" to displayProgress, "TITLE" to title))
+                setProgressAsync(workDataOf("PROGRESS" to displayProgress, "TITLE" to title, "FORMAT" to displayFormat, "THUMB" to thumb))
                 updateNotification(title, displayProgress)
             }
 

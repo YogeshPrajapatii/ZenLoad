@@ -4,18 +4,29 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import com.example.zenload.presentation.components.DownloadControlButton
 import com.example.zenload.presentation.components.DownloadProgressBar
 import com.example.zenload.presentation.components.GlassCard
 import com.example.zenload.presentation.viewmodels.ActiveViewModel
+import com.example.zenload.presentation.viewmodels.DownloadTaskUiModel
 
 @Composable
 fun ActiveScreen(
@@ -32,9 +43,9 @@ fun ActiveScreen(
                     Text(text = "No active downloads", color = Color.Gray)
                 }
             } else {
-                LazyColumn(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                LazyColumn(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     items(downloadTasks, key = { it.id }) { task ->
-                        ActiveDownloadCard(title = task.title, progress = task.progress)
+                        ActiveDownloadCard(task = task)
                     }
                     item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
@@ -44,14 +55,68 @@ fun ActiveScreen(
 }
 
 @Composable
-private fun ActiveDownloadCard(title: String, progress: Float) {
+private fun ActiveDownloadCard(task: DownloadTaskUiModel) {
+    val isAudio = task.format.contains("kbps", ignoreCase = true)
+
     GlassCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp, elevation = 8.dp) {
-        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-            Text(text = title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 20.sp), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.9f), maxLines = 1)
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                if (isAudio) {
+                    Box(
+                        modifier = Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(imageVector = Icons.Default.Headphones, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                    }
+                } else {
+                    AsyncImage(
+                        model = task.thumbnailUrl,
+                        contentDescription = null,
+                        modifier = Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = task.title,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 16.sp),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.9f),
+                        maxLines = 1
+                    )
+                    Text(
+                        text = "(${task.format.uppercase()})",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
-            DownloadProgressBar(progress = progress)
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
-                Text(text = "${(progress * 100).toInt()}%", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
+
+            DownloadProgressBar(progress = task.progress)
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val percentage = (task.progress * 100).toInt()
+                val statusText = if (percentage > 0) "$percentage% Downloading..." else "Starting..."
+
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DownloadControlButton(icon = Icons.Default.Pause, onClick = { /* Pause Logic */ })
+                    DownloadControlButton(icon = Icons.Default.Close, onClick = { /* Cancel Logic */ })
+                }
             }
         }
     }

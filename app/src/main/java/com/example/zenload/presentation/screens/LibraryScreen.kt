@@ -1,5 +1,9 @@
 package com.example.zenload.presentation.screens
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,21 +14,25 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.zenload.R
 import com.example.zenload.presentation.components.GlassCard
 import com.example.zenload.presentation.viewmodels.LibraryViewModel
+import java.io.File
 
 @Composable
 fun LibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val downloadedItems by viewModel.downloadedItems.collectAsState()
+    val context = LocalContext.current
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 24.dp)) {
@@ -37,12 +45,36 @@ fun LibraryScreen(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     items(downloadedItems) { item ->
-                        LibraryItemCard(title = item.title, res = item.resolution, size = item.sizeText, onClick = { /* Open File logic */ })
+                        LibraryItemCard(
+                            title = item.title,
+                            res = item.resolution,
+                            size = item.sizeText,
+                            onClick = { openMediaFile(context, item.filePath, item.resolution) }
+                        )
                     }
                     item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
             }
         }
+    }
+}
+
+private fun openMediaFile(context: Context, filePath: String, res: String) {
+    val file = File(filePath)
+    if (file.exists()) {
+        val uri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            val mimeType = if (res == "Audio") "audio/*" else "video/*"
+            setDataAndType(uri, mimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "No app found to open this file", Toast.LENGTH_SHORT).show()
+        }
+    } else {
+        Toast.makeText(context, "File not found. It may have been deleted.", Toast.LENGTH_SHORT).show()
     }
 }
 
