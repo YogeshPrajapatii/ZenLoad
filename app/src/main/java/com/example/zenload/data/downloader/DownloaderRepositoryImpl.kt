@@ -1,7 +1,12 @@
 package com.example.zenload.data.downloader
 
 import android.content.Context
-import androidx.work.*
+import android.util.Log
+import androidx.work.BackoffPolicy
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.example.zenload.data.local.DownloadDao
 import com.example.zenload.domain.model.MediaFormat
 import com.example.zenload.domain.model.VideoDetails
@@ -10,6 +15,7 @@ import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
 class DownloaderRepositoryImpl(
@@ -22,11 +28,8 @@ class DownloaderRepositoryImpl(
             try {
                 val request = YoutubeDLRequest(url).apply {
                     addOption("--no-playlist")
-                    addOption("--get-title")
-                    addOption("--get-thumbnail")
                     addOption("--no-check-certificates")
                     addOption("--geo-bypass")
-                    addOption("--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
                 }
 
                 val info = YoutubeDL.getInstance().getInfo(request)
@@ -60,6 +63,7 @@ class DownloaderRepositoryImpl(
                 }
                 Result.success(VideoDetails(info.title!!, info.thumbnail!!, duration, videoMap.values.toList() + audioMap.values.toList()))
             } catch (e: Exception) {
+                Log.e("ZenLoad_Debug", "Repo Fetch Error: ${e.message}", e)
                 Result.failure(e)
             }
         }
@@ -77,7 +81,7 @@ class DownloaderRepositoryImpl(
             .setInputData(data)
             .addTag("all_downloads")
             .addTag(downloadId)
-            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, java.util.concurrent.TimeUnit.SECONDS)
+            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
             .build()
 
         WorkManager.getInstance(context).enqueueUniqueWork(downloadId, ExistingWorkPolicy.KEEP, work)

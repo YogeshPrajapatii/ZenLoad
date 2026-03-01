@@ -29,7 +29,7 @@ class ZenLoadApp : Application(), Configuration.Provider {
                 YoutubeDL.getInstance().init(this@ZenLoadApp)
                 FFmpeg.getInstance().init(this@ZenLoadApp)
 
-                YoutubeDL.getInstance().updateYoutubeDL(this@ZenLoadApp, YoutubeDL.UpdateChannel.STABLE)
+                YoutubeDL.getInstance().updateYoutubeDL(this@ZenLoadApp, YoutubeDL.UpdateChannel.NIGHTLY)
                 Log.d("ZenLoad_Debug", "Engine Init & Updated")
             } catch (e: Exception) {
                 Log.e("ZenLoad_Debug", "Engine Error: ${e.message}")

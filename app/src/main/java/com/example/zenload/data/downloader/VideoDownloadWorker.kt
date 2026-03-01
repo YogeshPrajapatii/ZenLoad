@@ -1,10 +1,17 @@
 package com.example.zenload.data.downloader
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.media.MediaScannerConnection
+import android.os.Build
 import android.os.Environment
+import android.util.Log
+import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.example.zenload.data.local.DownloadDao
@@ -25,12 +32,50 @@ class VideoDownloadWorker @AssistedInject constructor(
     private val downloadDao: DownloadDao
 ) : CoroutineWorker(context, params) {
 
+    private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val channelId = "zenload_downloads"
+
+    override suspend fun getForegroundInfo(): ForegroundInfo {
+        createNotificationChannel()
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setContentTitle("Starting Download...")
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setOngoing(true)
+            .build()
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(id.hashCode(), notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            ForegroundInfo(id.hashCode(), notification)
+        }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(channelId, "Downloads", NotificationManager.IMPORTANCE_LOW)
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun updateNotification(title: String, progress: Int) {
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setContentTitle(title)
+            .setContentText(if (progress < 100) "Downloading: $progress%" else "Processing...")
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setProgress(100, progress, false)
+            .setOngoing(true)
+            .build()
+        notificationManager.notify(id.hashCode(), notification)
+    }
+
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val url = inputData.getString("URL") ?: return@withContext Result.failure()
         val formatId = inputData.getString("FORMAT_ID") ?: return@withContext Result.failure()
         val title = inputData.getString("TITLE") ?: "ZenLoad_Media"
 
         try {
+            setForeground(getForegroundInfo())
+
             val downloadFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             val zenLoadDir = File(downloadFolder, "ZenLoad").apply { if (!exists()) mkdirs() }
             val cleanTitle = title.replace(Regex("[^a-zA-Z0-9]"), "_")
@@ -66,7 +111,9 @@ class VideoDownloadWorker @AssistedInject constructor(
                         50 + (currentProgress / 2)
                     }
                 }
+
                 setProgressAsync(workDataOf("PROGRESS" to displayProgress, "TITLE" to title))
+                updateNotification(title, displayProgress)
             }
 
             val finalExt = if (isAudioOnly) "mp3" else "mp4"
@@ -83,9 +130,12 @@ class VideoDownloadWorker @AssistedInject constructor(
                         sizeText = String.format("%.2f MB", finalFile.length() / (1024.0 * 1024.0))
                     )
                 )
+                notificationManager.cancel(id.hashCode())
             }
             Result.success()
         } catch (e: Exception) {
+            Log.e("ZenLoad_Debug", "Worker Download Error: ${e.message}", e)
+            notificationManager.cancel(id.hashCode())
             Result.retry()
         }
     }

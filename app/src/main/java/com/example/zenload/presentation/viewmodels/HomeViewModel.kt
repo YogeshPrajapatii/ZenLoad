@@ -34,27 +34,44 @@ class HomeViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     fun fetchVideoDetails(url: String) {
-        if (url.isBlank()) return
+        if (url.isBlank()) {
+            _uiState.value = HomeUiState.Error("Please enter a valid link")
+            return
+        }
+
         _uiState.value = HomeUiState.Loading
+        Log.d("ZenLoad_Debug", "Started fetching formats for URL: $url")
+
         viewModelScope.launch {
             val result = getVideoDetailsUseCase(url)
             result.fold(
                 onSuccess = { details ->
                     val videoList = details.formats.filter { !it.resolution.contains("kbps") }
                     val audioList = details.formats.filter { it.resolution.contains("kbps") }
-                    _uiState.value = HomeUiState.Success(details.title, details.thumbnailUrl, videoList, audioList)
+
+                    Log.d("ZenLoad_Debug", "Success! Found ${videoList.size} Video and ${audioList.size} Audio formats.")
+
+                    if (videoList.isEmpty() && audioList.isEmpty()) {
+                        Log.e("ZenLoad_Debug", "Error: Formats list is empty for this link.")
+                        _uiState.value = HomeUiState.Error("No downloadable formats found for this link.")
+                    } else {
+                        _uiState.value = HomeUiState.Success(details.title, details.thumbnailUrl, videoList, audioList)
+                    }
                 },
                 onFailure = { error ->
-                    Log.e("ZenLoad_Debug", "Fetch Failed: ${error.message}")
-                    _uiState.value = HomeUiState.Error(error.localizedMessage ?: "Invalid URL")
+                    Log.e("ZenLoad_Debug", "Fetch Failed completely: ${error.message}", error)
+                    _uiState.value = HomeUiState.Error(error.localizedMessage ?: "Failed to fetch formats. Please try again.")
                 }
             )
         }
     }
 
     fun startDownload(url: String, formatId: String, title: String) {
+        Log.d("ZenLoad_Debug", "Starting download for format ID: $formatId")
         startDownloadUseCase(url, formatId, title)
     }
 
-    fun resetState() { _uiState.value = HomeUiState.Idle }
+    fun resetState() {
+        _uiState.value = HomeUiState.Idle
+    }
 }

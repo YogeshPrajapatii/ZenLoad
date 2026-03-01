@@ -73,7 +73,12 @@ fun HomeScreen(
                 Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     OutlinedTextField(
                         value = linkInput,
-                        onValueChange = { linkInput = it },
+                        onValueChange = {
+                            linkInput = it
+                            if (uiState is HomeUiState.Error) {
+                                viewModel.resetState()
+                            }
+                        },
                         placeholder = { Text("Paste media link here", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)) },
                         leadingIcon = { Icon(imageVector = Icons.Default.ContentPaste, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
                         modifier = Modifier.fillMaxWidth(),
@@ -115,8 +120,24 @@ fun HomeScreen(
                     }
                 }
             }
+
             Spacer(modifier = Modifier.height(32.dp))
-            if (uiState !is HomeUiState.Loading && uiState !is HomeUiState.Success) TaglinePlaceholder()
+
+            when (uiState) {
+                is HomeUiState.Error -> {
+                    Text(
+                        text = (uiState as HomeUiState.Error).message,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+                is HomeUiState.Idle -> {
+                    TaglinePlaceholder()
+                }
+                else -> {}
+            }
         }
 
         if (showBottomSheet && uiState is HomeUiState.Success) {
@@ -143,6 +164,7 @@ fun HomeScreen(
                             showBottomSheet = false
                             viewModel.resetState()
                             linkInput = ""
+                            onNavigateToDownloads()
                         }
                     }
                 )
@@ -191,9 +213,22 @@ private fun QualitySelectorContent(
             SegmentedControl(items = listOf("Video", "Audio"), selectedIndex = selectedTab, onValueChange = { selectedTab = it }, modifier = Modifier.padding(horizontal = 24.dp))
         }
         val currentFormats = if (selectedTab == 0) videoFormats else audioFormats
-        items(currentFormats) { format ->
-            Box(modifier = Modifier.padding(horizontal = 24.dp)) {
-                FormatCard(resolution = format.resolution, format = format.extension.uppercase(), size = format.fileSize, onClick = { onDownloadClicked(format) })
+
+        if (currentFormats.isEmpty()) {
+            item {
+                Text(
+                    text = "No formats available for this category.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.fillMaxWidth().padding(24.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            items(currentFormats) { format ->
+                Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    FormatCard(resolution = format.resolution, format = format.extension.uppercase(), size = format.fileSize, onClick = { onDownloadClicked(format) })
+                }
             }
         }
         item { Spacer(modifier = Modifier.height(24.dp)) }
