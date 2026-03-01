@@ -1,6 +1,6 @@
 package com.example.zenload.presentation.screens
 
-import androidx.compose.foundation.Image
+import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,7 +10,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.OndemandVideo
+import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +25,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -32,6 +36,7 @@ import com.example.zenload.presentation.components.GlassCard
 import com.example.zenload.presentation.components.SegmentedControl
 import com.example.zenload.presentation.viewmodels.HomeUiState
 import com.example.zenload.presentation.viewmodels.HomeViewModel
+import com.example.zenload.ui.theme.ZenLoadTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,19 +46,31 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToDownloads: () -> Unit
 ) {
-    var linkInput by remember { mutableStateOf(sharedLink) }
     val uiState by viewModel.uiState.collectAsState()
+    var linkInput by remember { mutableStateOf(sharedLink) }
     var showBottomSheet by remember { mutableStateOf(false) }
+
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(uiState) {
-        if (uiState is HomeUiState.Success) showBottomSheet = true
+        if (uiState is HomeUiState.Success) {
+            showBottomSheet = true
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Top) {
-            Text(text = "ZenLoad", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(bottom = 32.dp))
+        Column(
+            modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
+        ) {
+            Text(
+                text = "ZenLoad",
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(bottom = 32.dp)
+            )
 
             GlassCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 32.dp, elevation = 12.dp) {
                 Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -65,7 +82,13 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(50),
                         singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f), focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f), cursorColor = MaterialTheme.colorScheme.primary)
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                            cursorColor = MaterialTheme.colorScheme.primary,
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -95,12 +118,8 @@ fun HomeScreen(
                     }
                 }
             }
-
             Spacer(modifier = Modifier.height(32.dp))
-
-            if (uiState is HomeUiState.Idle || uiState is HomeUiState.Error) {
-                TaglinePlaceholder()
-            }
+            if (uiState !is HomeUiState.Loading && uiState !is HomeUiState.Success) TaglinePlaceholder()
         }
 
         if (showBottomSheet && uiState is HomeUiState.Success) {
@@ -126,6 +145,7 @@ fun HomeScreen(
                         scope.launch { sheetState.hide() }.invokeOnCompletion {
                             showBottomSheet = false
                             viewModel.resetState()
+                            linkInput = ""
                         }
                     }
                 )
@@ -158,24 +178,25 @@ private fun QualitySelectorContent(
     audioFormats: List<MediaFormat>,
     onDownloadClicked: (MediaFormat) -> Unit
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember { mutableStateOf(0) }
 
     LazyColumn(modifier = Modifier.fillMaxWidth().navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
-                AsyncImage(model = thumbnailUrl, contentDescription = null, modifier = Modifier.size(90.dp).clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Crop)
+                AsyncImage(model = thumbnailUrl, contentDescription = null, modifier = Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Crop)
                 Spacer(modifier = Modifier.width(16.dp))
-                Text(text = title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 18.sp), color = MaterialTheme.colorScheme.onBackground, maxLines = 2)
+                Column {
+                    Text(text = title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 16.sp), color = MaterialTheme.colorScheme.onBackground, maxLines = 2)
+                }
             }
         }
-
-        item { SegmentedControl(items = listOf("Video", "Audio"), selectedIndex = selectedTab, onValueChange = { selectedTab = it }, modifier = Modifier.padding(horizontal = 24.dp)) }
-
+        item {
+            SegmentedControl(items = listOf("Video", "Audio"), selectedIndex = selectedTab, onValueChange = { selectedTab = it }, modifier = Modifier.padding(horizontal = 24.dp))
+        }
         val currentFormats = if (selectedTab == 0) videoFormats else audioFormats
-
         items(currentFormats) { format ->
             Box(modifier = Modifier.padding(horizontal = 24.dp)) {
-                FormatCard(resolution = format.resolution, format = format.extension.uppercase(), size = format.fileSize) { onDownloadClicked(format) }
+                FormatCard(resolution = format.resolution, format = format.extension.uppercase(), size = format.fileSize, onClick = { onDownloadClicked(format) })
             }
         }
         item { Spacer(modifier = Modifier.height(24.dp)) }

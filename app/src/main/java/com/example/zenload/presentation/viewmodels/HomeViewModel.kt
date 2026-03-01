@@ -1,5 +1,6 @@
 package com.example.zenload.presentation.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.zenload.domain.model.MediaFormat
@@ -43,7 +44,10 @@ class HomeViewModel @Inject constructor(
                     val audioList = details.formats.filter { it.resolution.contains("kbps") }
                     _uiState.value = HomeUiState.Success(details.title, details.thumbnailUrl, videoList, audioList)
                 },
-                onFailure = { _uiState.value = HomeUiState.Error("Invalid URL or Server Error") }
+                onFailure = { error ->
+                    Log.e("ZenLoad_Debug", "Fetch Failed: ${error.message}")
+                    _uiState.value = HomeUiState.Error(error.localizedMessage ?: "Invalid URL")
+                }
             )
         }
     }

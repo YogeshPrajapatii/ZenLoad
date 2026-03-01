@@ -1,6 +1,7 @@
 package com.example.zenload
 
 import android.app.Application
+import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.yausername.ffmpeg.FFmpeg
@@ -27,8 +28,11 @@ class ZenLoadApp : Application(), Configuration.Provider {
             try {
                 YoutubeDL.getInstance().init(this@ZenLoadApp)
                 FFmpeg.getInstance().init(this@ZenLoadApp)
+
+                YoutubeDL.getInstance().updateYoutubeDL(this@ZenLoadApp, YoutubeDL.UpdateChannel.STABLE)
+                Log.d("ZenLoad_Debug", "Engine Init & Updated")
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("ZenLoad_Debug", "Engine Error: ${e.message}")
             }
         }
     }

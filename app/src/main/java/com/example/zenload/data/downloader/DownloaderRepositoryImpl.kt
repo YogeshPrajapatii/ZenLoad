@@ -23,10 +23,16 @@ class DownloaderRepositoryImpl(
                 val request = YoutubeDLRequest(url).apply {
                     addOption("--no-playlist")
                     addOption("--get-title")
+                    addOption("--get-thumbnail")
+                    addOption("--no-check-certificates")
+                    addOption("--geo-bypass")
+                    addOption("--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
                 }
-                val info = YoutubeDL.getInstance().getInfo(request)
-                val duration = info.duration.toLong()
 
+                val info = YoutubeDL.getInstance().getInfo(request)
+                if (info.title.isNullOrEmpty()) throw Exception("Extraction blocked")
+
+                val duration = info.duration.toLong()
                 val videoMap = mutableMapOf<String, MediaFormat>()
                 val audioMap = mutableMapOf<String, MediaFormat>()
                 val standardHeights = listOf(144, 240, 360, 480, 720, 1080, 1440, 2160)

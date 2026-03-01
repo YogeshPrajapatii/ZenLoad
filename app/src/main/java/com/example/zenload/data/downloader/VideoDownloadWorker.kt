@@ -3,7 +3,6 @@ package com.example.zenload.data.downloader
 import android.content.Context
 import android.media.MediaScannerConnection
 import android.os.Environment
-import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -75,7 +74,6 @@ class VideoDownloadWorker @AssistedInject constructor(
 
             if (finalFile.exists()) {
                 MediaScannerConnection.scanFile(context, arrayOf(finalFile.absolutePath), null, null)
-
                 downloadDao.insertDownload(
                     DownloadEntity(
                         id = id.toString(),
@@ -86,7 +84,6 @@ class VideoDownloadWorker @AssistedInject constructor(
                     )
                 )
             }
-
             Result.success()
         } catch (e: Exception) {
             Result.retry()
