@@ -10,5 +10,6 @@ data class DownloadEntity(
     val filePath: String,
     val resolution: String,
     val sizeText: String,
+    val thumbnailUrl: String,
     val timestamp: Long = System.currentTimeMillis()
 )

@@ -9,7 +9,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -56,12 +55,12 @@ fun ActiveScreen(
 
 @Composable
 private fun ActiveDownloadCard(task: DownloadTaskUiModel) {
-    val isAudio = task.format.contains("kbps", ignoreCase = true)
+    val isAudio = task.format.contains("MP3", ignoreCase = true) || task.format.contains("M4A", ignoreCase = true)
 
     GlassCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp, elevation = 8.dp) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (isAudio) {
+                if (isAudio || task.thumbnailUrl.isBlank()) {
                     Box(
                         modifier = Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
@@ -87,7 +86,7 @@ private fun ActiveDownloadCard(task: DownloadTaskUiModel) {
                         maxLines = 1
                     )
                     Text(
-                        text = "(${task.format.uppercase()})",
+                        text = "(${task.format})",
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         modifier = Modifier.padding(top = 2.dp)
@@ -97,7 +96,9 @@ private fun ActiveDownloadCard(task: DownloadTaskUiModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            DownloadProgressBar(progress = task.progress)
+            Box(modifier = Modifier.fillMaxWidth()) {
+                DownloadProgressBar(progress = task.progress, modifier = Modifier.align(Alignment.CenterStart))
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -114,8 +115,8 @@ private fun ActiveDownloadCard(task: DownloadTaskUiModel) {
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DownloadControlButton(icon = Icons.Default.Pause, onClick = { /* Pause Logic */ })
-                    DownloadControlButton(icon = Icons.Default.Close, onClick = { /* Cancel Logic */ })
+                    DownloadControlButton(icon = Icons.Default.Pause, onClick = { })
+                    DownloadControlButton(icon = Icons.Default.Close, onClick = { })
                 }
             }
         }

@@ -69,12 +69,13 @@ class DownloaderRepositoryImpl(
         }
     }
 
-    override fun startDownload(url: String, formatId: String, title: String): String {
+    override fun startDownload(url: String, formatId: String, title: String, thumbnailUrl: String): String {
         val downloadId = abs(url.hashCode().toLong()).toString()
         val data = Data.Builder()
             .putString("URL", url)
             .putString("FORMAT_ID", formatId)
             .putString("TITLE", title)
+            .putString("THUMB", thumbnailUrl)
             .build()
 
         val work = OneTimeWorkRequestBuilder<VideoDownloadWorker>()

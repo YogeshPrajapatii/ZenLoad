@@ -159,7 +159,7 @@ fun HomeScreen(
                     videoFormats = data.videoFormats,
                     audioFormats = data.audioFormats,
                     onDownloadClicked = { format ->
-                        viewModel.startDownload(linkInput, format.formatId, data.title)
+                        viewModel.startDownload(linkInput, format.formatId, data.title, data.thumbnailUrl)
                         scope.launch { sheetState.hide() }.invokeOnCompletion {
                             showBottomSheet = false
                             viewModel.resetState()

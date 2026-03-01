@@ -1,7 +1,6 @@
 package com.example.zenload.presentation.viewmodels
 
 import android.content.Context
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.work.WorkInfo
 import androidx.work.WorkManager

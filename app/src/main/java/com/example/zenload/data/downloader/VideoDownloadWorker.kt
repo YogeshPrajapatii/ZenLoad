@@ -23,7 +23,6 @@ import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.math.max
 
 @HiltWorker
 class VideoDownloadWorker @AssistedInject constructor(
@@ -72,7 +71,7 @@ class VideoDownloadWorker @AssistedInject constructor(
         val url = inputData.getString("URL") ?: return@withContext Result.failure()
         val formatId = inputData.getString("FORMAT_ID") ?: return@withContext Result.failure()
         val title = inputData.getString("TITLE") ?: "ZenLoad_Media"
-        val thumb = inputData.getString("THUMB") ?: "" // Add thumb if you pass it from home
+        val thumb = inputData.getString("THUMB") ?: ""
 
         try {
             setForeground(getForegroundInfo())
@@ -80,7 +79,6 @@ class VideoDownloadWorker @AssistedInject constructor(
             val isAudioOnly = formatId.contains("kbps") || formatId.startsWith("audio")
             val displayFormat = if (isAudioOnly) "MP3" else "MP4"
 
-            // Ensure initial zero state is passed completely
             setProgressAsync(workDataOf("PROGRESS" to 0, "TITLE" to title, "FORMAT" to displayFormat, "THUMB" to thumb))
 
             val downloadFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
@@ -102,24 +100,29 @@ class VideoDownloadWorker @AssistedInject constructor(
                 addOption("--newline")
             }
 
-            var isSecondStream = false
+            var maxProgressSeen = 0
+            var streamPhase = 1
+            var lastRawProgress = 0
+
             YoutubeDL.getInstance().execute(request, id.toString()) { progress, _, _ ->
-                val currentProgress = max(0, progress.toInt())
-                val displayProgress = if (isAudioOnly) {
-                    currentProgress
+                val rawProgress = progress.toInt()
+
+                if (rawProgress < lastRawProgress && lastRawProgress > 50 && streamPhase == 1) {
+                    streamPhase = 2
+                }
+                lastRawProgress = rawProgress
+
+                val calcProgress = if (isAudioOnly) {
+                    rawProgress
                 } else {
-                    if (currentProgress == 100 && !isSecondStream) {
-                        isSecondStream = true
-                        50
-                    } else if (!isSecondStream) {
-                        currentProgress / 2
-                    } else {
-                        50 + (currentProgress / 2)
-                    }
+                    if (streamPhase == 1) (rawProgress / 2) else 50 + (rawProgress / 2)
                 }
 
-                setProgressAsync(workDataOf("PROGRESS" to displayProgress, "TITLE" to title, "FORMAT" to displayFormat, "THUMB" to thumb))
-                updateNotification(title, displayProgress)
+                if (calcProgress > maxProgressSeen) {
+                    maxProgressSeen = calcProgress
+                    setProgressAsync(workDataOf("PROGRESS" to maxProgressSeen, "TITLE" to title, "FORMAT" to displayFormat, "THUMB" to thumb))
+                    updateNotification(title, maxProgressSeen)
+                }
             }
 
             val finalExt = if (isAudioOnly) "mp3" else "mp4"
@@ -133,7 +136,9 @@ class VideoDownloadWorker @AssistedInject constructor(
                         title = title,
                         filePath = finalFile.absolutePath,
                         resolution = if (isAudioOnly) "Audio" else formatId,
-                        sizeText = String.format("%.2f MB", finalFile.length() / (1024.0 * 1024.0))
+                        sizeText = String.format("%.2f MB", finalFile.length() / (1024.0 * 1024.0)),
+                        thumbnailUrl = thumb,
+                        timestamp = System.currentTimeMillis()
                     )
                 )
                 notificationManager.cancel(id.hashCode())
