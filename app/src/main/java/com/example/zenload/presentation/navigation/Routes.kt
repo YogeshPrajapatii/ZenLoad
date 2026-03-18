@@ -1,3 +1,4 @@
+
 package com.example.zenload.presentation.navigation
 
 import kotlinx.serialization.Serializable
