@@ -105,7 +105,8 @@ fun HomeScreen(
                     ) {
                         if (uiState is HomeUiState.Loading) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
-                        } else {
+                     
+   } else {
                             Text(text = "Fetch Formats", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
                         }
                     }
