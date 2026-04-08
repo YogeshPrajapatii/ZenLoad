@@ -27,6 +27,7 @@ object BottomTabs {
         BottomNavItem("Home", Icons.Filled.Home, Icons.Outlined.Home, HomeRoute),
         BottomNavItem("Active", Icons.Filled.Download, Icons.Outlined.Download, ActiveRoute),
         BottomNavItem("Library", Icons.Filled.Folder, Icons.Outlined.Folder, LibraryRoute),
+
         BottomNavItem("Settings", Icons.Filled.Settings, Icons.Outlined.Settings, SettingsRoute)
     )
 }
