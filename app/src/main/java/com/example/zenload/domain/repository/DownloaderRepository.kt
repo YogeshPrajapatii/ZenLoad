@@ -1,5 +1,6 @@
 package com.example.zenload.domain.repository
 
+
 import com.example.zenload.domain.model.VideoDetails
 
 interface DownloaderRepository {
